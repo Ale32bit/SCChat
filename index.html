@@ -11,6 +11,17 @@
         #chat p { padding: 5px 10px; }
         #chat p:nth-child(odd) { background: #eee; }
         #chat { margin-bottom: 40px }
+
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #e0e0e0;
+            color: black;
+            padding: 4px;
+            clear: both;
+        }
     </style>
     <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
     <script src="jquery.min.js"></script>
@@ -50,6 +61,8 @@
             request.open('GET', "https://pi.ale32bit.me");
             request.responseType = 'text';
             request.onload = function() {
+                var loading = document.getElementById('loadingtext');
+                loading.parentNode.removeChild(loading);
                 var data = JSON.parse(request.response).reverse();
                 for(var k in data){
                     var v = data[k];
@@ -78,8 +91,12 @@
 <body>
     <div id="escape" style="display: none;"></div>
     <div class="chat" id="chat">
-        <p><b>Welcome to SwitchCraft chat viewer!</b></p>
-        <p><i>Coded by Ale32bit</i></p>
+        <p><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></p>
+        <h1 id="loadingtext">Loading latest 100 messages...</h1>
     </div>
+
+    <footer class="footer">
+        <p style="text-align: right;">&copy; 2018 Ale32bit</p>
+    </footer>
 </body>
 </html>
