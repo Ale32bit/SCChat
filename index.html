@@ -12,19 +12,24 @@
         #chat p:nth-child(odd) { background: #eee; }
         #chat { margin-bottom: 40px }
     </style>
-
+    <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
+    <script src="jquery.min.js"></script>
     <script>
+        function escape(message){
+            $("div.escape").text(message);
+            return $("<div>").text(message).html();
+        }
         function addLine(data){
             var message;
             if(data.type === "message"){
                 console.log(data.player+"> "+data.message);
-                message="<b>"+data.player+"</b><br>"+data.message;
+                message="<b>"+data.player+"</b><br>"+escape(data.message);
             }else if(data.type === "death"){
                 console.log(data.message);
-                message="<i>"+data.message+"</i>";
+                message="<i>"+escape(data.message)+"</i>";
             }else if(data.type === "login"){
                 console.log(data.player+" "+data.message);
-                message="<b>"+data.player+" "+data.message+"</b>";
+                message="<b>"+data.player+" "+escape(data.message)+"</b>";
             }else if(data.type === "subscribe" && data.event === "chat"){
                 console.log("Ready");
                 start();
@@ -68,8 +73,10 @@
             console.log("Connection opened")
         });
     </script>
+    <script>if (window.module) module = window.module;</script>
 </head>
 <body>
+    <div id="escape" style="display: none;"></div>
     <div class="chat" id="chat">
         <p><b>Welcome to SwitchCraft chat viewer!</b></p>
         <p><i>Coded by Ale32bit</i></p>

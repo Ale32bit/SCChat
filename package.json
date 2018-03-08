@@ -1,12 +1,13 @@
 {
   "name": "scchat",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
-  "dependencies": {
-    "electron": "^1.8.3"
+  "dependencies": {},
+  "devDependencies": {
+    "electron-builder": "^20.4.0",
+    "electron-prebuilt": "^1.4.13"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
