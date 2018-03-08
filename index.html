@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SwitchCraft Chat Viewer</title>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font: 13px Helvetica, Arial; }
+        #chat { list-style-type: none; margin: 0; padding: 0; }
+        #chat p { padding: 5px 10px; }
+        #chat p:nth-child(odd) { background: #eee; }
+        #chat { margin-bottom: 40px }
+    </style>
+
+    <script>
+        function addLine(data){
+            var message;
+            if(data.type === "message"){
+                console.log(data.player+"> "+data.message);
+                message="<b>"+data.player+"</b><br>"+data.message;
+            }else if(data.type === "death"){
+                console.log(data.message);
+                message="<i>"+data.message+"</i>";
+            }else if(data.type === "login"){
+                console.log(data.player+" "+data.message);
+                message="<b>"+data.player+" "+data.message+"</b>";
+            }else if(data.type === "subscribe" && data.event === "chat"){
+                console.log("Ready");
+                start();
+            }else if(data.message){
+                console.log(data.message);
+                message = data.message;
+            }
+            if(message) {
+                var list = document.getElementById('chat');
+                var entry = document.createElement('p');
+                entry.innerHTML = message;
+                list.appendChild(entry);
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+        }
+        function start(){
+            var request = new XMLHttpRequest();
+            request.open('GET', "https://pi.ale32bit.me");
+            request.responseType = 'text';
+            request.onload = function() {
+                var data = JSON.parse(request.response).reverse();
+                for(var k in data){
+                    var v = data[k];
+                    addLine(v);
+                }
+            };
+            request.send();
+        }
+    </script>
+
+    <script>
+        var ws = new WebSocket("wss://pi.ale32bit.me");
+
+        ws.addEventListener("message", function (event) {
+            var data = JSON.parse(event.data);
+            addLine(data);
+        });
+
+        ws.addEventListener("open",function(){
+            ws.send(JSON.stringify({type:"subscribe",event:"chat"}));
+            console.log("Connection opened")
+        });
+    </script>
+</head>
+<body>
+    <div class="chat" id="chat">
+        <p><b>Welcome to SwitchCraft chat viewer!</b></p>
+        <p><i>Coded by Ale32bit</i></p>
+    </div>
+</body>
+</html>

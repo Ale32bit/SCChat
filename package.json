@@ -1,0 +1,23 @@
+{
+  "name": "scchat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "electron": "^1.8.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ale32bit/SCChat.git"
+  },
+  "author": "Ale32bit",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Ale32bit/SCChat/issues"
+  },
+  "homepage": "https://github.com/Ale32bit/SCChat#readme"
+}
