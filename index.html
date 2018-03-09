@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>SwitchCraft Chat Viewer</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font: 13px Helvetica, Arial; }
+        body { font: 13px BlinkMacSystemFont, -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", "Helvetica", "Arial", sans-serif }
         #chat { list-style-type: none; margin: 0; padding: 0; }
         #chat p { padding: 5px 10px; }
         #chat p:nth-child(odd) { background: #eee; }
@@ -26,9 +26,13 @@
     <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
     <script src="jquery.min.js"></script>
     <script>
+        var enableHTMLformatting = false;
         function escape(message){
-            $("div.escape").text(message);
-            return $("<div>").text(message).html();
+            if(!enableHTMLformatting) {
+                $("div.escape").text(message);
+                return $("<div>").text(message).html();
+            }
+            return message;
         }
         function addLine(data){
             var message;
@@ -37,10 +41,14 @@
                 message="<b>"+data.player+"</b><br>"+escape(data.message);
             }else if(data.type === "death"){
                 console.log(data.message);
-                message="<i>"+escape(data.message)+"</i>";
+                message="<i style='color: #424242'>"+escape(data.message)+"</i>";
             }else if(data.type === "login"){
                 console.log(data.player+" "+data.message);
-                message="<b>"+data.player+" "+escape(data.message)+"</b>";
+                if (data.message === "joined"){
+                    message="<b style='color: #1b5e20'>"+data.player+" "+escape(data.message)+"</b>";
+                }else{
+                    message="<b style='color: #f44336'>"+data.player+" "+escape(data.message)+"</b>";
+                }
             }else if(data.type === "subscribe" && data.event === "chat"){
                 console.log("Ready");
                 start();
@@ -71,6 +79,13 @@
             };
             request.send();
         }
+
+        function HTMLcheck(h){
+            enableHTMLformatting = h.checked;
+            if(h.checked){
+                console.log("Oh no");
+            }
+        }
     </script>
 
     <script>
@@ -89,14 +104,19 @@
     <script>if (window.module) module = window.module;</script>
 </head>
 <body>
+    <div class="container">
     <div id="escape" style="display: none;"></div>
     <div class="chat" id="chat">
         <p><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></p>
-        <h1 id="loadingtext">Loading latest 100 messages...</h1>
+        <h1 id="loadingtext" style="text-align: center;">Loading latest 100 messages...</h1>
     </div>
 
     <footer class="footer">
-        <p style="text-align: right;">&copy; 2018 Ale32bit</p>
+        <p style="float: right;">&copy; 2018 Ale32bit</p>
+        <label>
+            <input type="checkbox" onclick="HTMLcheck(this);" title="Warning: Enabling HTML formatting may lead to regrets."> HTML Formatting
+        </label>
     </footer>
+    </div>
 </body>
 </html>
