@@ -2,15 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SwitchCraft Chat Viewer</title>
+    <title>Unofficial SwitchCraft Chat Viewer</title>
+    <link rel="shortcut icon" type="image/x-icon" href="icon.ico"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font: 13px BlinkMacSystemFont, -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", "Helvetica", "Arial", sans-serif }
-        #chat { list-style-type: none; margin: 0; padding: 0; }
-        #chat p { padding: 5px 10px; }
-        #chat p:nth-child(odd) { background: #eee; }
-        #chat { margin-bottom: 40px }
+        .chat { list-style-type: none; margin: 0; padding: 0; word-wrap: break-word;}
+        .chat p { padding: 5px 10px; }
+        .chat p:nth-child(odd) { background: #eee; }
+        .chat { margin-bottom: 40px; }
 
         .footer {
             position: fixed;
@@ -22,9 +24,28 @@
             padding: 4px;
             clear: both;
         }
+
+        /*.container {
+            display: grid;
+            grid-column-gap: 50px;
+            grid-row-gap: 50px;
+
+            grid-template-areas:
+                    'main main main menu'
+        }*/
+
+        /*.chat { grid-area: main; overflow: scroll;}
+
+        .sidebar { grid-area: menu ; }*/
+
     </style>
+
     <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
-    <script src="jquery.min.js"></script>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/moment.min.js"></script>
+    <script src="js/linkify.min.js"></script>
+    <script src="js/linkify-jquery.min.js"></script>
+    <script src="js/linkify-html.min.js"></script>
     <script>
         var enableHTMLformatting = false;
         function escape(message){
@@ -35,20 +56,28 @@
             return message;
         }
         function addLine(data){
+            var fTimestamp;
+            if(data.timestamp){
+                var date = new Date(data.timestamp * 1000);
+                fTimestamp = moment(date).format("HH:mm")
+            }
             var message;
             if(data.type === "message"){
                 console.log(data.player+"> "+data.message);
-                message="<b>"+data.player+"</b><br>"+escape(data.message);
+                message="<b>"+data.player+"</b> <a style='color: #555555'>"+fTimestamp+"</a><br>"+escape(data.message);
             }else if(data.type === "death"){
                 console.log(data.message);
-                message="<i style='color: #424242'>"+escape(data.message)+"</i>";
-            }else if(data.type === "login"){
-                console.log(data.player+" "+data.message);
-                if (data.message === "joined"){
-                    message="<b style='color: #1b5e20'>"+data.player+" "+escape(data.message)+"</b>";
-                }else{
-                    message="<b style='color: #f44336'>"+data.player+" "+escape(data.message)+"</b>";
+                message="💀 <i style='color: #424242'>"+escape(data.message)+"</i> <a style='color: #555555'>"+fTimestamp+"</a>";
+            }else if(data.type === "login") {
+                console.log(data.player + " " + data.message);
+                if (data.message === "joined") {
+                    message = "👤 <b style='color: #1b5e20'>" + data.player + " " + escape(data.message) + "</b> <a style='color: #555555'>" + fTimestamp + "</a>";
+                } else {
+                    message = "👤 <b style='color: #f44336'>" + data.player + " " + escape(data.message) + "</b> <a style='color: #555555'>" + fTimestamp + "</a>";
                 }
+            }else if(data.type === "console_message"){
+                console.log("CLCONSOLE> " + data.message);
+                message = "🖥 <b>CLConsole</b> <a style='color: #555555'>"+fTimestamp+"</a><br>"+escape(data.message);
             }else if(data.type === "subscribe" && data.event === "chat"){
                 console.log("Ready");
                 start();
@@ -59,7 +88,8 @@
             if(message) {
                 var list = document.getElementById('chat');
                 var entry = document.createElement('p');
-                entry.innerHTML = message;
+                entry.innerHTML = linkifyHtml(message);
+                entry.class = "chat";
                 list.appendChild(entry);
                 window.scrollTo(0, document.body.scrollHeight);
             }
@@ -80,41 +110,67 @@
             request.send();
         }
 
-        function HTMLcheck(h){
+        function HTMLCheck(h){
             enableHTMLformatting = h.checked;
             if(h.checked){
                 console.log("Oh no");
+                return;
             }
+            console.log("You're safe now");
         }
     </script>
 
     <script>
-        var ws = new WebSocket("wss://pi.ale32bit.me");
+        var ws;
+        function startWS() {
+            ws = new WebSocket("wss://pi.ale32bit.me");
 
-        ws.addEventListener("message", function (event) {
-            var data = JSON.parse(event.data);
-            addLine(data);
-        });
+            ws.addEventListener("message", function (event) {
+                var data = JSON.parse(event.data);
+                addLine(data);
+            });
 
-        ws.addEventListener("open",function(){
-            ws.send(JSON.stringify({type:"subscribe",event:"chat"}));
-            console.log("Connection opened")
-        });
+            ws.addEventListener("open", function () {
+                ws.send(JSON.stringify({type: "subscribe", event: "chat"}));
+                ws.send(JSON.stringify({type: "subscribe", event: "console_message"}));
+                addLine({message: "<b>Connected</b>"});
+            });
+
+            ws.addEventListener("close", function (event) {
+                console.log("Closed");
+                addLine({message: "<b>Connection closed</b>"});
+                addLine({message: "<b>Attempting to reconnect...</b>"});
+                console.log(event);
+                console.log(event.reason);
+                setTimeout(startWS,3000)
+            });
+
+            ws.addEventListener("error", function (err) {
+                console.log(err);
+                addLine({
+                    message: "Error",
+                });
+                addLine({message: "<b>Attempting to reconnect...</b>"});
+                setTimeout(startWS,3000)
+            });
+        }
+        startWS();
     </script>
     <script>if (window.module) module = window.module;</script>
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="width: 100%">
     <div id="escape" style="display: none;"></div>
     <div class="chat" id="chat">
         <p><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></p>
         <h1 id="loadingtext" style="text-align: center;">Loading latest 100 messages...</h1>
     </div>
+    <!--<div class="sidebar"><p>hi</p></div>-->
 
     <footer class="footer">
-        <p style="float: right;">&copy; 2018 Ale32bit</p>
+        <p style="float: right;"><a href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a> | &copy; 2018 Ale32bit</p>
         <label>
-            <input type="checkbox" onclick="HTMLcheck(this);" title="Warning: Enabling HTML formatting may lead to regrets."> HTML Formatting
+            <input type="checkbox" onclick="HTMLCheck(this);" title="Warning: Enabling HTML formatting may lead to regrets."> HTML Formatting
         </label>
     </footer>
     </div>

@@ -1,11 +1,14 @@
 {
   "name": "scchat",
-  "version": "1.1.0",
-  "description": "",
+  "version": "1.2.0",
+  "description": "Unofficial SwitchCraft Chat Viewer",
   "main": "index.js",
-  "dependencies": {},
+  "dependencies": {
+    "open": "0.0.5"
+  },
   "devDependencies": {
     "electron-builder": "^20.4.0",
+    "electron-packager": "^11.1.0",
     "electron-prebuilt": "^1.4.13"
   },
   "scripts": {
@@ -20,5 +23,11 @@
   "bugs": {
     "url": "https://github.com/Ale32bit/SCChat/issues"
   },
-  "homepage": "https://github.com/Ale32bit/SCChat#readme"
+  "homepage": "https://github.com/Ale32bit/SCChat#readme",
+  "build":{
+    "appId": "me.ale32bit.scchatviewer",
+    "productName":"Unofficial SwitchCraft Chat Viewer",
+    "copyright":"© 2018 ${author}",
+    "icon":"icon.ico"
+  }
 }
