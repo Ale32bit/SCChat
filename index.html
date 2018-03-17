@@ -1,4 +1,7 @@
 <!DOCTYPE html>
+
+<!-- This code kinda sucks. Pardon me -->
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,22 +10,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <style>
+        /* ignore this :root */
+        :root {
+            --bg: #f;
+            --sec: #f;
+            --message: #f;
+            --sidenavbg: #f;
+            --sidenavtext: #f;
+            --playerstextcolor: #f;
+            --noplayers: #f;
+            --timestamp: #f;
+            --death: #f;
+            --join: #f;
+            --quit: #f;
+            --links: #f;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font: 13px BlinkMacSystemFont, -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", "Helvetica", "Arial", sans-serif }
+        body {
+            font: 13px BlinkMacSystemFont, -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+            background-color: var(--bg);
+        }
+        a:link {
+            color: var(--links);
+        }
         .chat { list-style-type: none; margin: 0; padding: 0; word-wrap: break-word;}
         .chat p { padding: 5px 10px; }
-        .chat p:nth-child(odd) { background: #eee; }
-        .chat { margin-bottom: 40px; }
+        .chat p:nth-child(odd) { background: var(--sec); }
+        /*.chat { margin-bottom: 40px; }*/
+        .chat {
+            margin-right: 210px; /* Same as the width of the sidebar */
+            padding-bottom: 10px;
+            color: var(--message);
+        }
 
-        .footer {
-            position: fixed;
-            left: 0;
-            bottom: 0;
-            width: 100%;
-            background-color: #e0e0e0;
-            color: black;
-            padding: 4px;
-            clear: both;
+        .sidenav {
+            height: 100%; /* Full-height: remove this if you want "auto" height */
+            width: 210px; /* Set the width of the sidebar */
+            float: right;
+            position: fixed; /* Fixed Sidebar (stay in place on scroll) */
+            z-index: 1; /* Stay on top */
+            top: 0; /* Stay at the top */
+            right: 0;
+            margin-bottom: 20px;
+            background-color: var(--sidenavbg);
+            color: var(--sidenavtext);
+            overflow-x: hidden; /* Disable horizontal scroll */
+            padding-top: 20px;
+            border-left-style: solid;
+            border-left-color: #676565;
+        }
+
+        .sidenav a, .sidenav p {
+            padding: 0 8px 0 16px;
+            text-decoration: none;
+            color: var(--sidenavtext);
+            display: block;
+        }
+
+        .title {
+            padding: 6px 8px 6px 16px;
+            font-size: 25px;
+        }
+
+        .players a, .players p {
+            padding: 0 8px 0 16px;
+            text-decoration: none;
+            font-size: 14px;
+            color: var(--playerstextcolor);
+            display: block;
         }
 
         /*.container {
@@ -47,54 +103,140 @@
     <script src="js/linkify-jquery.min.js"></script>
     <script src="js/linkify-html.min.js"></script>
     <script>
-        var enableHTMLformatting = false;
-        function escape(message){
-            if(!enableHTMLformatting) {
-                $("div.escape").text(message);
+
+        var lightThemeColor = {
+            bg: "#eee",
+            sec: "#e0e0e0",
+            message:"black",
+            sidenavbg: "#bdbdbd",
+            sidenavtext: "black",
+            playerstextcolor: "black",
+            noplayers: "#888",
+            timestamp: "#555555",
+            death: "#424242",
+            join: "#1b5e20",
+            quit: "#f44336",
+            links: "blue",
+        };
+
+        var darkThemeColor = {
+            bg: "#212121",
+            sec: "#424242",
+            message: "#bdbdbd",
+            sidenavbg: "#151515",
+            sidenavtext: "#bdbdbd",
+            playerstextcolor: "#bdbdbd",
+            noplayers: "#888",
+            timestamp: "#888",
+            death: "#888888",
+            join: "#00920b",
+            quit: "#A0312A",
+            links: "#b0bec5",
+        };
+
+        function setTheme(theme){
+            if(theme === "light"){
+                for(let k in lightThemeColor){
+                    document.body.style.setProperty('--'+k,lightThemeColor[k])
+                }
+            }else if(theme === "dark"){
+                for(let k in darkThemeColor){
+                    document.body.style.setProperty('--'+k,darkThemeColor[k])
+                }
+            }
+        }
+
+        var enableHTMLformatting = false; // HTML formatting disabled by default
+        var players = {};
+        function escape(message){ // Sanitize HTML
+            if(!enableHTMLformatting) { // If html formatting is disabled
+                $("div.escape").text(message); // sanitize
                 return $("<div>").text(message).html();
             }
-            return message;
+            return message; // else don't sanitize
         }
-        function addLine(data){
+
+        function updatePlayerList(){
+            document.getElementById("players").innerHTML = "";
+            var list = document.getElementById('players');
+            var pls = [];
+            for (let k in players) {
+                if(players[k]) {
+                    pls.push(k)
+                }
+            }
+            pls.sort();
+            if(pls.length > 0) {
+                for (let k in pls) {
+                    var entry = document.createElement('a');
+                    entry.setAttribute("id", "player__"+pls[k]);
+                    entry.innerHTML = pls[k];
+                    list.appendChild(entry);
+                }
+            }else{
+                var entry = document.createElement('p');
+                entry.innerHTML = "No players online";
+                entry.style.color = "var(--footerbg)";
+                list.appendChild(entry);
+            }
+        }
+
+        function addLine(data, latest){
             var fTimestamp;
             if(data.timestamp){
-                var date = new Date(data.timestamp * 1000);
-                fTimestamp = moment(date).format("HH:mm")
+                var date = new Date(data.timestamp * 1000); // * 1000 because UNIX timestamp
+                fTimestamp = moment(date).format("HH:mm") // gen timestamp 24h format
             }
+
+            // TODO: Replace UTF-8 Emojis with images for compatibility with old OSes (i.e. Windows 7)
+
             var message;
-            if(data.type === "message"){
+            if(data.type === "message"){ // common messages
                 console.log(data.player+"> "+data.message);
-                message="<b>"+data.player+"</b> <a style='color: #555555'>"+fTimestamp+"</a><br>"+escape(data.message);
-            }else if(data.type === "death"){
+                message="<b>"+data.player+"</b> <a style='color: var(--timestamp)'>"+fTimestamp+"</a><br>"+escape(data.message);
+            }else if(data.type === "death"){ // death messages
                 console.log(data.message);
-                message="💀 <i style='color: #424242'>"+escape(data.message)+"</i> <a style='color: #555555'>"+fTimestamp+"</a>";
-            }else if(data.type === "login") {
+                message="💀 <i style='color: var(--death)'>"+escape(data.message)+"</i> <a style='color: var(--timestamp)'>"+fTimestamp+"</a>";
+            }else if(data.type === "login") { // join/quits
                 console.log(data.player + " " + data.message);
-                if (data.message === "joined") {
-                    message = "👤 <b style='color: #1b5e20'>" + data.player + " " + escape(data.message) + "</b> <a style='color: #555555'>" + fTimestamp + "</a>";
-                } else {
-                    message = "👤 <b style='color: #f44336'>" + data.player + " " + escape(data.message) + "</b> <a style='color: #555555'>" + fTimestamp + "</a>";
+                if (data.message === "joined") { // if join
+                    if(!latest) {
+                        players[data.player] = true;
+                    }
+                    message = "👤 <b style='color: var(--join)'>" + data.player + " " + escape(data.message) + "</b> <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
+                } else { // else (normally quit)
+                    if(!latest) {
+                        players[data.player] = undefined;
+                    }
+                    message = "👤 <b style='color: var(--quit)'>" + data.player + " " + escape(data.message) + "</b> <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
                 }
-            }else if(data.type === "console_message"){
+                updatePlayerList();
+            }else if(data.type === "console_message"){ // console message
                 console.log("CLCONSOLE> " + data.message);
-                message = "🖥 <b>CLConsole</b> <a style='color: #555555'>"+fTimestamp+"</a><br>"+escape(data.message);
-            }else if(data.type === "subscribe" && data.event === "chat"){
+                message = "🖥 <b>CLConsole</b> <a style='color: var(--timestamp)'>"+fTimestamp+"</a><br>"+escape(data.message);
+            }else if(data.type === "subscribe" && data.event === "chat") { // If chat subscribe is confirmed retrieve latest 100 messages
                 console.log("Ready");
                 start();
-            }else if(data.message){
+            }else if(data.type === "players"){
+                players = {};
+                for(let k in data.players){
+                    players[data.players[k].name] = true;
+                }
+                updatePlayerList();
+            }else if(data.message){ // else print any message
                 console.log(data.message);
                 message = data.message;
             }
             if(message) {
-                var list = document.getElementById('chat');
-                var entry = document.createElement('p');
-                entry.innerHTML = linkifyHtml(message);
-                entry.class = "chat";
-                list.appendChild(entry);
-                window.scrollTo(0, document.body.scrollHeight);
+                var list = document.getElementById('chat'); // get list
+                var entry = document.createElement('p'); // create <p>
+                entry.innerHTML = linkifyHtml(message); // find and convert URLs to links
+                entry.class = "chat"; // give class chat to the <p>
+                list.appendChild(entry); // add <p> to list
+                window.scrollTo(0, document.body.scrollHeight); // auto scroll to bottom
             }
         }
-        function start(){
+        function start(){ // retrieve latest 100 messages and print them
             var request = new XMLHttpRequest();
             request.open('GET', "https://pi.ale32bit.me");
             request.responseType = 'text';
@@ -104,75 +246,108 @@
                 var data = JSON.parse(request.response).reverse();
                 for(var k in data){
                     var v = data[k];
-                    addLine(v);
+                    addLine(v,true);
                 }
             };
             request.send();
         }
 
         function HTMLCheck(h){
-            enableHTMLformatting = h.checked;
+            enableHTMLformatting = h.checked; // Toggle HTML formatting (XSS)
             if(h.checked){
-                console.log("Oh no");
+                console.log("Oh no"); // this is just for fun
                 return;
             }
             console.log("You're safe now");
         }
+
+        function toggleDarkTheme(h) { // Toggle dark theme // TODO: Save state in a file
+            if(h.checked){
+                setTheme("dark")
+            }else{
+                setTheme("light")
+            }
+        }
+
+        $(document).ready(function(){
+            setTheme("light");
+        })
     </script>
 
     <script>
         var ws;
         function startWS() {
-            ws = new WebSocket("wss://pi.ale32bit.me");
+            ws = new WebSocket("wss://pi.ale32bit.me"); // Connect to WS server
 
-            ws.addEventListener("message", function (event) {
-                var data = JSON.parse(event.data);
-                addLine(data);
+            ws.addEventListener("message", function (event) { // Listen to all messages from server
+                var data = JSON.parse(event.data); // Parse plain text to JSON
+                addLine(data); // Process data
             });
 
-            ws.addEventListener("open", function () {
-                ws.send(JSON.stringify({type: "subscribe", event: "chat"}));
-                ws.send(JSON.stringify({type: "subscribe", event: "console_message"}));
-                addLine({message: "<b>Connected</b>"});
+            ws.addEventListener("open", function () { // When ready
+                ws.send(JSON.stringify({type: "subscribe", event: "chat"})); // Subscribe to chat messages
+                ws.send(JSON.stringify({type: "subscribe", event: "console_message"})); // Subscribe to console messages
+                addLine({message: "<b>Connected</b>"}); // Add "Connected" line
+                ws.send(JSON.stringify({
+                    type:"players",
+                }));
+
+                setInterval(function(){
+                    ws.send(JSON.stringify({
+                        type:"players",
+                    }))
+                },30000);
+
             });
 
-            ws.addEventListener("close", function (event) {
+            ws.addEventListener("close", function (event) { // If WS closes
                 console.log("Closed");
                 addLine({message: "<b>Connection closed</b>"});
                 addLine({message: "<b>Attempting to reconnect...</b>"});
                 console.log(event);
                 console.log(event.reason);
-                setTimeout(startWS,3000)
+                setTimeout(startWS,3000) // Restart WS after 3 seconds
             });
 
-            ws.addEventListener("error", function (err) {
+            ws.addEventListener("error", function (err) { // If WS errors
                 console.log(err);
                 addLine({
                     message: "Error",
                 });
                 addLine({message: "<b>Attempting to reconnect...</b>"});
-                setTimeout(startWS,3000)
+                setTimeout(startWS,3000) // Restart WS after 3 seconds
             });
         }
-        startWS();
+        startWS(); // Start WS for the first time
     </script>
     <script>if (window.module) module = window.module;</script>
 </head>
 <body>
-    <div class="container" style="width: 100%">
-    <div id="escape" style="display: none;"></div>
-    <div class="chat" id="chat">
-        <p><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></p>
-        <h1 id="loadingtext" style="text-align: center;">Loading latest 100 messages...</h1>
-    </div>
-    <!--<div class="sidebar"><p>hi</p></div>-->
+    <div style="width: 100%">
+        <div id="escape" style="display: none;"></div>
 
-    <footer class="footer">
-        <p style="float: right;"><a href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a> | &copy; 2018 Ale32bit</p>
-        <label>
-            <input type="checkbox" onclick="HTMLCheck(this);" title="Warning: Enabling HTML formatting may lead to regrets."> HTML Formatting
-        </label>
-    </footer>
+        <div class="chat" id="chat">
+            <p><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></p>
+            <h1 id="loadingtext" style="text-align: center;">Loading latest 100 messages...</h1>
+        </div>
+        <div class="sidenav">
+            <p class="title">Online Players:</p>
+            <div id="players" class="players">
+                <p style="color:var(--noplayers)">Loading</p>
+            </div>
+            <div style="bottom:0; position: fixed; padding-bottom: 5px; padding-left:5px;">
+                <label>
+                    <input type="checkbox" onclick="HTMLCheck(this);" title="Warning: Enabling HTML formatting may lead to regrets."> HTML Formatting <!-- TODO: Should find a way to show better the warning. a tooltip? -->
+                </label>
+                <br>
+                <label>
+                    <input type="checkbox" onclick="toggleDarkTheme(this);"> Dark Theme
+                </label>
+
+                <p style="padding-top: 10px"><a href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a></p>
+                <p style="float:right; text-align:right;">&copy; 2018 Ale32bit</p>
+            </div>
+        </div>
     </div>
 </body>
 </html>
