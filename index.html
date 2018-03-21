@@ -35,8 +35,8 @@
             color: var(--links);
         }
         .chat { list-style-type: none; margin: 0; padding: 0; word-wrap: break-word;}
-        .chat p { padding: 5px 10px; }
-        .chat p:nth-child(odd) { background: var(--sec); }
+        .chat div { padding: 5px 10px; }
+        .chat div:nth-child(odd) { background: var(--sec); }
         /*.chat { margin-bottom: 40px; }*/
         .chat {
             margin-right: 210px; /* Same as the width of the sidebar */
@@ -95,7 +95,7 @@
         .sidebar { grid-area: menu ; }*/
 
     </style>
-
+    <noscript><a style="color:black;">JavaScript is required to run!</a></noscript>
     <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
     <script src="js/jquery.min.js"></script>
     <script src="js/moment.min.js"></script>
@@ -136,7 +136,7 @@
             timestamp: "#888",
             death: "#888888",
             join: "#00920b",
-            quit: "#A0312A",
+            quit: "#ea3024",
             links: "#b0bec5",
         };
 
@@ -152,11 +152,8 @@
             }
         }
 
-        function md(text){
-            var mm = converter.makeHtml(text);
-            mm = mm.replace("<p>","");
-            mm = mm.replace("</p>","");
-            return mm;
+        function sanitizeUsername(username){
+            return username.replace(/_/g,"\\_")
         }
 
         var enableHTMLformatting = false; // HTML formatting disabled by default
@@ -164,7 +161,7 @@
         function escape(message){ // Sanitize HTML
             if(!enableHTMLformatting) { // If html formatting is disabled
                 $("div.escape").text(message); // sanitize
-                return md($("<div>").text(message).html());
+                return $("<div>").text(message).html();
             }
             return message; // else don't sanitize
         }
@@ -206,27 +203,27 @@
             var message;
             if(data.type === "chat_message"){ // common messages
                 console.log(data.player+"> "+data.message);
-                message="<b>"+data.player+"</b> <a style='color: var(--timestamp)'>"+fTimestamp+"</a><br>"+escape(data.message);
+                message="**"+sanitizeUsername(data.player)+"** <a style='color: var(--timestamp)'>"+fTimestamp+"</a><br>"+escape(data.message);
             }else if(data.type === "death_message"){ // death messages
                 console.log(data.message);
-                message="💀 <i style='color: var(--death)'>"+escape(data.message)+"</i> <a style='color: var(--timestamp)'>"+fTimestamp+"</a>";
+                message="💀 *<a style='color: var(--death)'>"+escape(sanitizeUsername(data.message))+"</a>* <a style='color: var(--timestamp)'>"+fTimestamp+"</a>";
             }else if(data.type === "connection_activity") { // join/quits
                 console.log(data.player + " " + data.message);
                 if (data.message === "joined") { // if join
                     if(!latest) {
                         players[data.player] = true;
                     }
-                    message = "👤 <b style='color: var(--join)'>" + data.player + " " + escape(data.message) + "</b> <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
+                    message = "👤 **<a style='color: var(--join)'>" + sanitizeUsername(data.player) + " " + escape(data.message) + "</a>** <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
                 } else { // else (normally quit)
                     if(!latest) {
                         players[data.player] = undefined;
                     }
-                    message = "👤 <b style='color: var(--quit)'>" + data.player + " " + escape(data.message) + "</b> <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
+                    message = "👤 **<a style='color: var(--quit)'>" + sanitizeUsername(data.player) + " " + escape(data.message) + "</a>** <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
                 }
                 updatePlayerList();
             }else if(data.type === "console_message"){ // console message
                 console.log("CLCONSOLE> " + data.message);
-                message = "🖥 <b>CLConsole</b> <a style='color: var(--timestamp)'>"+fTimestamp+"</a><br>"+escape(data.message);
+                message = "🖥 **CLConsole** <a style='color: var(--timestamp)'>"+fTimestamp+"</a><br>"+escape(data.message);
             }else if(data.type === "subscribe" && data.event === "chat_message") { // If chat subscribe is confirmed retrieve latest 100 messages
                 console.log("Ready");
             }else if(data.type === "players"){
@@ -241,7 +238,8 @@
             }
             if(message) {
                 var list = document.getElementById('chat'); // get list
-                var entry = document.createElement('p'); // create <p>
+                var entry = document.createElement('div'); // create <p>
+                message = converter.makeHtml(message);
                 entry.innerHTML = linkifyHtml(message); // find and convert URLs to links
                 entry.class = "chat"; // give class chat to the <p>
                 list.appendChild(entry); // add <p> to list
@@ -282,7 +280,7 @@
         }
 
         $(document).ready(function(){
-            setTheme("light");
+            setTheme("dark");
         })
     </script>
 
@@ -341,7 +339,7 @@
         <div id="escape" style="display: none;"></div>
 
         <div class="chat" id="chat">
-            <p><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></p>
+            <div><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></div>
             <h1 id="loadingtext" style="text-align: center;">Loading latest 100 messages...</h1>
         </div>
         <div class="sidenav">
@@ -355,10 +353,11 @@
                 </label>
                 <br>
                 <label>
-                    <input type="checkbox" onclick="toggleDarkTheme(this);"> Dark Theme
+                    <input type="checkbox" onclick="toggleDarkTheme(this);" checked> Dark Theme
                 </label>
 
-                <p style="padding-top: 10px"><a href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a></p>
+                <p style="padding-top: 10px; float:right;"><a href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a></p>
+                <p><a style="float:right;" href="https://github.com/Ale32bit/SCChat/issues" target="_blank">Report bug</a></p>
                 <p style="float:right; text-align:right;">&copy; 2018 Ale32bit</p>
             </div>
         </div>
