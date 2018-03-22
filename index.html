@@ -24,6 +24,8 @@
             --join: #f;
             --quit: #f;
             --links: #f;
+            --buttonbg: #f;
+            --buttontext: #f;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -39,14 +41,14 @@
         .chat div:nth-child(odd) { background: var(--sec); }
         /*.chat { margin-bottom: 40px; }*/
         .chat {
-            margin-right: 210px; /* Same as the width of the sidebar */
+            margin-right: 167px; /* Same as the width of the sidebar */
             padding-bottom: 10px;
             color: var(--message);
         }
 
         .sidenav {
             height: 100%; /* Full-height: remove this if you want "auto" height */
-            width: 210px; /* Set the width of the sidebar */
+            width: 167px; /* Set the width of the sidebar */
             float: right;
             position: fixed; /* Fixed Sidebar (stay in place on scroll) */
             z-index: 1; /* Stay on top */
@@ -62,7 +64,7 @@
         }
 
         .sidenav a, .sidenav p {
-            padding: 0 8px 0 16px;
+            /*padding: 0 8px 0 16px;*/
             text-decoration: none;
             color: var(--sidenavtext);
             display: block;
@@ -79,6 +81,19 @@
             font-size: 14px;
             color: var(--playerstextcolor);
             display: block;
+        }
+
+        .button {
+            background-color: var(--buttonbg);
+            border: none;
+            color: var(--buttontext) !important;
+            padding: 10px 27px;
+            margin-top: 6px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            outline:none;
         }
 
         /*.container {
@@ -106,6 +121,8 @@
     <script src="https://twemoji.maxcdn.com/2/twemoji.min.js?2.5"></script>
     <script>
 
+        var dark = true;
+
         var converter = new showdown.Converter({
             prefixHeaderId: "markdown__",
         });
@@ -123,6 +140,8 @@
             join: "#1b5e20",
             quit: "#f44336",
             links: "blue",
+            buttonbg: "#d0d0d0",
+            buttontext: "black",
         };
 
         var darkThemeColor = {
@@ -138,6 +157,8 @@
             join: "#00920b",
             quit: "#ea3024",
             links: "#b0bec5",
+            buttonbg: "#424242",
+            buttontext: "white",
         };
 
         function setTheme(theme){
@@ -263,16 +284,21 @@
         }
 
         function HTMLCheck(h){
-            enableHTMLformatting = h.checked; // Toggle HTML formatting (XSS)
-            if(h.checked){
+            enableHTMLformatting = !enableHTMLformatting; // Toggle HTML formatting (XSS)
+            if(enableHTMLformatting){
                 console.log("Oh no"); // this is just for fun
+                var btn = document.getElementById('htmlbtn');
+                btn.innerHTML = "Disable HTML";
                 return;
             }
             console.log("You're safe now");
+            var btn = document.getElementById('htmlbtn');
+            btn.innerHTML = "Enable HTML";
         }
 
         function toggleDarkTheme(h) { // Toggle dark theme // TODO: Save state in a file
-            if(h.checked){
+            dark = !dark;
+            if (dark){
                 setTheme("dark")
             }else{
                 setTheme("light")
@@ -347,18 +373,14 @@
             <div id="players" class="players">
                 <p style="color:var(--noplayers)">Loading</p>
             </div>
-            <div style="bottom:0; position: fixed; padding-bottom: 5px; padding-left:5px;">
-                <label>
-                    <input type="checkbox" onclick="HTMLCheck(this);" title="Warning: Enabling HTML formatting may lead to regrets."> HTML Formatting <!-- TODO: Should find a way to show better the warning. a tooltip? -->
-                </label>
-                <br>
-                <label>
-                    <input type="checkbox" onclick="toggleDarkTheme(this);" checked> Dark Theme
-                </label>
-
-                <p style="padding-top: 10px; float:right;"><a href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a></p>
-                <p><a style="float:right;" href="https://github.com/Ale32bit/SCChat/issues" target="_blank">Report bug</a></p>
-                <p style="float:right; text-align:right;">&copy; 2018 Ale32bit</p>
+            <div style="bottom:0; position: fixed; padding-bottom: 5px; padding-left:5px; padding-right:5px; text-align: center;">
+                <button class="button" id="htmlbtn"onclick="HTMLCheck();" title="Warning: Enabling HTML formatting may lead to regrets.">Enable HTML</button> <!-- TODO: Should find a way to show better the warning. a tooltip? -->
+                <button class="button" onclick="toggleDarkTheme();">Switch Theme</button>
+                <div style="text-align: center;">
+                    <p style="padding-top: 10px;"><a class="button" href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a></p>
+                    <p><a class="button" href="https://github.com/Ale32bit/SCChat/issues" target="_blank">Report bug</a></p>
+                    <p>&copy; 2018 Ale32bit</p>
+                </div>
             </div>
         </div>
     </div>
