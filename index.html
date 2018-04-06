@@ -269,7 +269,7 @@
         }
         function start(){ // retrieve latest 100 messages and print them
             var request = new XMLHttpRequest();
-            request.open('GET', "https://pi.ale32bit.me");
+            request.open('GET', "https://cl.ale32bit.me");
             request.responseType = 'text';
             request.onload = function() {
                 var loading = document.getElementById('loadingtext');
@@ -313,7 +313,7 @@
     <script>
         var ws;
         function startWS() {
-            ws = new WebSocket("wss://pi.ale32bit.me"); // Connect to WS server
+            ws = new WebSocket("wss://cl.ale32bit.me"); // Connect to WS server
 
             ws.addEventListener("message", function (event) { // Listen to all messages from server
                 var data = JSON.parse(event.data); // Parse plain text to JSON
@@ -352,8 +352,6 @@
                 addLine({
                     message: "Error",
                 });
-                addLine({message: "<b>Attempting to reconnect...</b>"});
-                setTimeout(startWS,3000) // Restart WS after 3 seconds
             });
         }
         startWS(); // Start WS for the first time
