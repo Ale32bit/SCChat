@@ -112,20 +112,24 @@
     </style>
     <noscript><a style="color:black;">JavaScript is required to run!</a></noscript>
     <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
-    <script src="js/jquery.min.js"></script>
-    <script src="js/moment.min.js"></script>
-    <script src="js/linkify.min.js"></script>
-    <script src="js/linkify-jquery.min.js"></script>
-    <script src="js/linkify-html.min.js"></script>
-    <script src="js/showdown.min.js"></script>
-    <script src="https://twemoji.maxcdn.com/2/twemoji.min.js?2.5"></script>
-    <script>
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/moment.min.js"></script>
+    <script type="text/javascript" src="js/linkify.min.js"></script>
+    <script type="text/javascript" src="js/linkify-jquery.min.js"></script>
+    <script type="text/javascript" src="js/linkify-html.min.js"></script>
+    <script type="text/javascript" src="js/showdown.min.js"></script>
+    <script type="text/javascript" src="https://twemoji.maxcdn.com/2/twemoji.min.js?2.5"></script>
+    <script type="text/javascript">
 
         var dark = true;
 
         var converter = new showdown.Converter({
             prefixHeaderId: "markdown__",
+            emoji: true,
+            strikethrough: true,
         });
+
+        console.log(converter.getOptions());
 
         var lightThemeColor = {
             bg: "#eee",
@@ -174,7 +178,7 @@
         }
 
         function sanitizeUsername(username){
-            return username.replace(/_/g,"\\_")
+            if(typeof(username) === "string") return username.replace(/_/g,"\\_");
         }
 
         var enableHTMLformatting = false; // HTML formatting disabled by default
@@ -222,40 +226,47 @@
             // TODO: Replace UTF-8 Emojis with images for compatibility with old OSes (i.e. Windows 7)
 
             var message;
-            if(data.type === "chat_message"){ // common messages
-                console.log(data.player+"> "+data.message);
-                message="**"+sanitizeUsername(data.player)+"** <a style='color: var(--timestamp)'>"+fTimestamp+"</a><br>"+escape(data.message);
-            }else if(data.type === "death_message"){ // death messages
-                console.log(data.message);
-                message="💀 *<a style='color: var(--death)'>"+escape(sanitizeUsername(data.message))+"</a>* <a style='color: var(--timestamp)'>"+fTimestamp+"</a>";
-            }else if(data.type === "connection_activity") { // join/quits
-                console.log(data.player + " " + data.message);
-                if (data.message === "joined") { // if join
-                    if(!latest) {
-                        players[data.player] = true;
+            if(data.type === "event") {
+                if (data.event === "chat_message") { // common messages
+                    console.log(data.player + "> " + data.message);
+                    message = "**" + sanitizeUsername(data.player) + "** <a style='color: var(--timestamp)'>" + fTimestamp + "</a><br> " + escape(data.message);
+                } else if (data.event === "death_message") { // death messages
+                    console.log(data.message);
+                    message = "💀 *<a style='color: var(--death)'>" + escape(sanitizeUsername(data.pretty)) + "</a>* <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
+                } else if (data.event === "connection_activity") { // join/quits
+                    console.log(data.player + " " + data.activity);
+                    if (data.activity === "join") { // if join
+                        if (!latest) {
+                            players[data.player] = true;
+                        }
+                        message = "👤 **<a style='color: var(--join)'>" + sanitizeUsername(data.player) + " joined</a>** <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
+                    } else { // else (normally quit)
+                        if (!latest) {
+                            players[data.player] = undefined;
+                        }
+                        message = "👤 **<a style='color: var(--quit)'>" + sanitizeUsername(data.player) + " left</a>** <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
                     }
-                    message = "👤 **<a style='color: var(--join)'>" + sanitizeUsername(data.player) + " " + escape(data.message) + "</a>** <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
-                } else { // else (normally quit)
-                    if(!latest) {
-                        players[data.player] = undefined;
+                    updatePlayerList();
+                } else if (data.event === "console_message") { // console message
+                    console.log("CLCONSOLE> " + data.message);
+                    message = "🖥 **CLConsole** <a style='color: var(--timestamp)'>" + fTimestamp + "</a><br> " + escape(data.message);
+                } else if (data.event === "chatbox_message") {
+                    //message = "🖥 " + data.prefix + "[" + data.x + " " + data.y + " " + data.z + "] " + data.label + ": " + data.message;
+                    message = "🖥 **" + escape(sanitizeUsername(data.prefix)) + "[" + data.x + " " + data.y + " " + data.z + "] " + escape(sanitizeUsername(data.label))+ "** <a style='color: var(--timestamp)'>" + fTimestamp + "</a><br> " + escape(data.message);
+                }
+            } else {
+                if (data.type === "subscribe" && data.event === "chat_message") { // If chat subscribe is confirmed retrieve latest 100 messages
+                    console.log("Ready");
+                } else if (data.type === "players") {
+                    players = {};
+                    for (let k in data.players) {
+                        players[data.players[k].name] = true;
                     }
-                    message = "👤 **<a style='color: var(--quit)'>" + sanitizeUsername(data.player) + " " + escape(data.message) + "</a>** <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
+                    updatePlayerList();
+                } else if (data.message) { // else print any message
+                    console.log(data.message);
+                    message = data.message;
                 }
-                updatePlayerList();
-            }else if(data.type === "console_message"){ // console message
-                console.log("CLCONSOLE> " + data.message);
-                message = "🖥 **CLConsole** <a style='color: var(--timestamp)'>"+fTimestamp+"</a><br>"+escape(data.message);
-            }else if(data.type === "subscribe" && data.event === "chat_message") { // If chat subscribe is confirmed retrieve latest 100 messages
-                console.log("Ready");
-            }else if(data.type === "players"){
-                players = {};
-                for(let k in data.players){
-                    players[data.players[k].name] = true;
-                }
-                updatePlayerList();
-            }else if(data.message){ // else print any message
-                console.log(data.message);
-                message = data.message;
             }
             if(message) {
                 var list = document.getElementById('chat'); // get list
@@ -275,6 +286,7 @@
                 var loading = document.getElementById('loadingtext');
                 loading.parentNode.removeChild(loading);
                 var data = JSON.parse(request.response);
+                console.log(data);
                 for(var k in data){
                     var v = data[k];
                     addLine(v,true);
@@ -283,7 +295,7 @@
             request.send();
         }
 
-        function HTMLCheck(h){
+        function HTMLCheck(){
             enableHTMLformatting = !enableHTMLformatting; // Toggle HTML formatting (XSS)
             if(enableHTMLformatting){
                 console.log("Oh no"); // this is just for fun
@@ -325,6 +337,7 @@
                 ws.send(JSON.stringify({type: "subscribe", event: "death_message"})); // Subscribe to death messages
                 ws.send(JSON.stringify({type: "subscribe", event: "connection_activity"})); // Subscribe to connection activity
                 ws.send(JSON.stringify({type: "subscribe", event: "console_message"})); // Subscribe to console messages
+                ws.send(JSON.stringify({type: "subscribe", event: "chatbox_message"})); // Subscribe to chatboxes messages
                 addLine({message: "<b>Connected</b>"}); // Add "Connected" line
                 ws.send(JSON.stringify({
                     type:"players",
