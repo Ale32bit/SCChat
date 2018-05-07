@@ -36,12 +36,14 @@
         a:link {
             color: var(--links);
         }
+
         .chat { list-style-type: none; margin: 0; padding: 0; word-wrap: break-word;}
         .chat div { padding: 5px 10px; }
         .chat div:nth-child(odd) { background: var(--sec); }
         /*.chat { margin-bottom: 40px; }*/
-        .chat {
+        .displaychat {
             margin-right: 167px; /* Same as the width of the sidebar */
+            margin-bottom: 20px;
             padding-bottom: 10px;
             color: var(--message);
         }
@@ -59,8 +61,7 @@
             color: var(--sidenavtext);
             overflow-x: hidden; /* Disable horizontal scroll */
             padding-top: 20px;
-            border-left-style: solid;
-            border-left-color: #676565;
+            border-left: solid #676565;
         }
 
         .sidenav a, .sidenav p {
@@ -96,6 +97,30 @@
             outline:none;
         }
 
+        .textinput {
+            bottom: 0;
+            position: fixed;
+            width: 100vw;
+            margin-right: 167px;
+            display: inline-block;
+            z-index: 1;
+            overflow:hidden;
+        }
+
+        .textinput input[type=text] {
+
+            width: 40vw;
+            padding: 4px 3px;
+            margin: 0;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+
+        .textinput input[type=submit] {
+            width: auto;
+            padding: 4px;
+        }
+
         /*.container {
             display: grid;
             grid-column-gap: 50px;
@@ -120,6 +145,8 @@
     <script type="text/javascript" src="js/showdown.min.js"></script>
     <script type="text/javascript" src="https://twemoji.maxcdn.com/2/twemoji.min.js?2.5"></script>
     <script type="text/javascript">
+
+        var token = window.localStorage.token || false;
 
         var dark = true;
 
@@ -214,6 +241,17 @@
                 entry.style.color = "var(--footerbg)";
                 list.appendChild(entry);
             }
+            if(localStorage.token) {
+                if (players[localStorage.player]) { //disable text input if online
+                    document.getElementById("sendMsg").placeholder = "Leave the server to send messages from here";
+                    document.getElementById("sendMsg").disabled = true;
+                    document.getElementById("submitMsg").disabled = true;
+                }else{
+                    document.getElementById("sendMsg").placeholder = "Send a message as "+localStorage.player || "n/a";
+                    document.getElementById("sendMsg").disabled = false;
+                    document.getElementById("submitMsg").disabled = false;
+                }
+            }
         }
 
         function addLine(data, latest){
@@ -230,6 +268,9 @@
                 if (data.event === "chat_message") { // common messages
                     console.log(data.player + "> " + data.message);
                     message = "**" + sanitizeUsername(data.player) + "** <a style='color: var(--timestamp)'>" + fTimestamp + "</a><br> " + escape(data.message);
+                } else if (data.event === "user_message"){
+                    console.log(data.name + "> " + data.message);
+                    message = "**" + sanitizeUsername(data.name) + "** <a style='color: var(--timestamp)'>" + fTimestamp + "</a><br> " + escape(data.message);
                 } else if (data.event === "death_message") { // death messages
                     console.log(data.message);
                     message = "💀 *<a style='color: var(--death)'>" + escape(sanitizeUsername(data.pretty)) + "</a>* <a style='color: var(--timestamp)'>" + fTimestamp + "</a>";
@@ -317,9 +358,36 @@
             }
         }
 
+        function sendMessage(){
+            var message = document.getElementById("sendMsg").value;
+
+            if(!localStorage.token){ //bind
+                console.log(localStorage.token);
+                console.log(!localStorage.token);
+                ws.send(JSON.stringify({
+                    type:"bind",
+                    code: message,
+                }))
+            }
+
+            if(message !== ""){
+                if(!players[localStorage.player]) {
+                    ws.send(JSON.stringify({
+                        type: "send_message",
+                        token: token,
+                        message: message,
+                    }))
+                } else {
+                    return false;
+                }
+            }
+            document.getElementById("sendMsg").value = "";
+            return false;
+        }
+
         $(document).ready(function(){
             setTheme("dark");
-        })
+        });
     </script>
 
     <script>
@@ -329,18 +397,60 @@
 
             ws.addEventListener("message", function (event) { // Listen to all messages from server
                 var data = JSON.parse(event.data); // Parse plain text to JSON
-                addLine(data); // Process data
+                console.log(data);
+                if(data.type === "bind") {
+                    console.log("BIND_________________________________");
+                    if (data.status) {
+                        window.localStorage.token = data.token;
+                        token = data.token;
+                        window.localStorage.player = data.player;
+                        addLine({
+                            message: "Connected as " + data.player,
+                        });
+                        document.getElementById("sendMsg").placeholder = "Send a message as " + data.player;
+                        document.getElementById("sendMsg").maxLength = 256;
+                        document.getElementById("sendMsg").value = "";
+                        document.getElementById("submitMsg").disabled = false;
+                    } else {
+                        console.log(data);
+                    }
+                }else if (data.type==="token_info"){
+                    console.log("TOKEN_________________________________");
+                    if(data.status){
+                        window.localStorage.player = data.player;
+                        addLine({
+                            message: "Connected as " + data.player,
+                        });
+                        document.getElementById("sendMsg").placeholder = "Send a message as " + data.player;
+                        document.getElementById("sendMsg").maxLength = 256;
+                        document.getElementById("sendMsg").value = "";
+                        document.getElementById("submitMsg").disabled = false;
+                    }else{
+                        token = false;
+                        window.localStorage.token = false;
+                        console.log(data)
+                    }
+                }else {
+                    addLine(data); // Process data
+                }
             });
 
             ws.addEventListener("open", function () { // When ready
                 ws.send(JSON.stringify({type: "subscribe", event: "chat_message"})); // Subscribe to chat messages
+                ws.send(JSON.stringify({type: "subscribe", event: "user_message"})); // Subscribe to user messages
                 ws.send(JSON.stringify({type: "subscribe", event: "death_message"})); // Subscribe to death messages
                 ws.send(JSON.stringify({type: "subscribe", event: "connection_activity"})); // Subscribe to connection activity
                 ws.send(JSON.stringify({type: "subscribe", event: "console_message"})); // Subscribe to console messages
                 ws.send(JSON.stringify({type: "subscribe", event: "chatbox_message"})); // Subscribe to chatboxes messages
                 addLine({message: "<b>Connected</b>"}); // Add "Connected" line
+
                 ws.send(JSON.stringify({
                     type:"players",
+                }));
+
+                ws.send(JSON.stringify({
+                    type: "token_info",
+                    token: token,
                 }));
 
                 setInterval(function(){
@@ -353,7 +463,6 @@
 
             ws.addEventListener("close", function (event) { // If WS closes
                 console.log("Closed");
-                addLine({message: "<b>Connection closed</b>"});
                 addLine({message: "<b>Attempting to reconnect...</b>"});
                 console.log(event);
                 console.log(event.reason);
@@ -375,17 +484,25 @@
     <div style="width: 100%">
         <div id="escape" style="display: none;"></div>
 
-        <div class="chat" id="chat">
-            <div><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></div>
-            <h1 id="loadingtext" style="text-align: center;">Loading latest 100 messages...</h1>
+        <div class="displaychat">
+            <div class="chat" id="chat">
+                <div><b>Welcome to SwitchCraft chat viewer!</b> <i>Coded by Ale32bit!</i></div>
+                <h1 id="loadingtext" style="text-align: center;">Loading latest 100 messages...</h1>
+            </div>
+            <div class="textinput" id="textinput">
+                <form onsubmit="return sendMessage()">
+                    <input id="sendMsg" type="text" maxlength="6" placeholder="Bind code">
+                    <input type="submit" value="Send" id="submitMsg">
+                </form>
+            </div>
         </div>
         <div class="sidenav">
-            <p class="title">Online Players:</p>
+            <p class="title">Players:</p>
             <div id="players" class="players">
                 <p style="color:var(--noplayers)">Loading</p>
             </div>
             <div style="bottom:0; position: fixed; padding-bottom: 5px; padding-left:5px; padding-right:5px; text-align: center;">
-                <button class="button" id="htmlbtn"onclick="HTMLCheck();" title="Warning: Enabling HTML formatting may lead to regrets.">Enable HTML</button> <!-- TODO: Should find a way to show better the warning. a tooltip? -->
+                <button class="button" id="htmlbtn" onclick="HTMLCheck();" title="Warning: Enabling HTML formatting may lead to regrets.">Enable HTML</button> <!-- TODO: Should find a way to show better the warning. a tooltip? -->
                 <button class="button" onclick="toggleDarkTheme();">Switch Theme</button>
                 <div style="text-align: center;">
                     <p style="padding-top: 10px;"><a class="button" href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a></p>
