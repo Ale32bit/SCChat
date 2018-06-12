@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<!-- This code kinda sucks. Pardon me -->
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unofficial SwitchCraft Chat</title>
+    <link rel="shortcut icon" type="image/x-icon" href="icon.ico"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="SwitchCraft Chat Bridge" />
+    <meta property="og:title" content="SwitchCraft Chat" />
+    <meta property="og:description" content="SwitchCraft Chat Bridge" />
+    <meta property="og:image" content="logo.png" />
+
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/loading.css">
+    <noscript><a style="color:white;">JavaScript is required to run!</a></noscript>
+    <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/moment.min.js"></script>
+    <script type="text/javascript" src="js/linkify.min.js"></script>
+    <script type="text/javascript" src="js/linkify-jquery.min.js"></script>
+    <script type="text/javascript" src="js/linkify-html.min.js"></script>
+    <script type="text/javascript" src="js/showdown.min.js"></script>
+    <script type="text/javascript" src="https://twemoji.maxcdn.com/2/twemoji.min.js?2.5"></script>
+    <script type="text/javascript">
+
+        var converter = new showdown.Converter({
+            prefixHeaderId: "markdown__",
+            emoji: true,
+            strikethrough: true,
+        });
+
+        console.log(converter.getOptions());
+
+        function sanitizeUsername(username){
+            if(typeof(username) === "string") return username.replace(/_/g,"\\_");
+        }
+
+        var enableHTMLformatting = false; // HTML formatting disabled by default
+        var players = {};
+        function escape(message){ // Sanitize HTML
+            if(!enableHTMLformatting) { // If html formatting is disabled
+                $("div.escape").text(message); // sanitize
+                return $("<div>").text(message).html();
+            }
+            return message; // else don't sanitize
+        }
+
+        function updatePlayerList(){
+            document.getElementById("players").innerHTML = "";
+            var list = document.getElementById('players');
+            var pls = [];
+            for (let k in players) {
+                if(players[k]) {
+                    pls.push(k)
+                }
+            }
+            pls.sort();
+            if(pls.length > 0) {
+                for (let k in pls) {
+                    var entry = document.createElement('a');
+                    entry.setAttribute("id", "player__"+pls[k]);
+                    entry.innerHTML = pls[k];
+                    list.appendChild(entry);
+                }
+            }else{
+                var entry = document.createElement('p');
+                entry.innerHTML = "No players online";
+                entry.style.color = "var(--footerbg)";
+                list.appendChild(entry);
+            }
+            if(localStorage.token) {
+                if (players[localStorage.player]) { //disable text input if online
+                    document.getElementById("sendMsg").placeholder = "Leave the server to send messages from here";
+                    document.getElementById("sendMsg").disabled = true;
+                    document.getElementById("submitMsg").disabled = true;
+                }else{
+                    document.getElementById("sendMsg").placeholder = "Send a message as "+localStorage.player || "n/a";
+                    document.getElementById("sendMsg").disabled = false;
+                    document.getElementById("submitMsg").disabled = false;
+                }
+            }
+        }
+
+        function addLine(data, latest){
+            var fTimestamp;
+            if(data.timestamp){
+                var date = new Date(data.timestamp * 1000); // * 1000 because UNIX timestamp
+                fTimestamp = moment(date).format("HH:mm") // gen timestamp 24h format
+            }
+
+            // TODO: Replace UTF-8 Emojis with images for compatibility with old OSes (i.e. Windows 7)
+
+            var message;
+            if(data.type === "event") {
+                if (data.event === "chat_message") { // common messages
+                    console.log(data.player + "> " + data.message);
+                    message = "**" + sanitizeUsername(data.player) + "** <a style='color: #888'>" + fTimestamp + "</a><br> " + escape(data.message);
+                } else if (data.event === "user_message"){
+                    console.log(data.name + "> " + data.message);
+                    message = "**" + sanitizeUsername(data.name) + "** <a style='color: #888'>" + fTimestamp + "</a><br> " + escape(data.message);
+                } else if (data.event === "death_message") { // death messages
+                    console.log(data.message);
+                    message = "💀 *<a style='color: #888888'>" + escape(sanitizeUsername(data.pretty)) + "</a>* <a style='color: #888'>" + fTimestamp + "</a>";
+                } else if (data.event === "connection_activity") { // join/quits
+                    console.log(data.player + " " + data.activity);
+                    if (data.activity === "join") { // if join
+                        if (!latest) {
+                            players[data.player] = true;
+                        }
+                        message = "👤 **<a style='color: #00920b'>" + sanitizeUsername(data.player) + " joined</a>** <a style='color: #888'>" + fTimestamp + "</a>";
+                    } else { // else (normally quit)
+                        if (!latest) {
+                            players[data.player] = undefined;
+                        }
+                        message = "👤 **<a style='color: #ea3024'>" + sanitizeUsername(data.player) + " left</a>** <a style='color: #888'>" + fTimestamp + "</a>";
+                    }
+                    updatePlayerList();
+                } else if (data.event === "console_message") { // console message
+                    console.log("CLCONSOLE> " + data.message);
+                    message = "🖥 **CLConsole** <a style='color: #888'>" + fTimestamp + "</a><br> " + escape(data.message);
+                } else if (data.event === "chatbox_message") {
+                    //message = "🖥 " + data.prefix + "[" + data.x + " " + data.y + " " + data.z + "] " + data.label + ": " + data.message;
+                    message = "🖥 **" + escape(sanitizeUsername(data.prefix)) + "[" + data.x + " " + data.y + " " + data.z + "] " + escape(sanitizeUsername(data.label))+ "** <a style='color: #888)'>" + fTimestamp + "</a><br> " + escape(data.message);
+                }
+            } else {
+                if (data.type === "subscribe" && data.event === "chat_message") { // If chat subscribe is confirmed retrieve latest 100 messages
+                    console.log("Ready");
+                } else if (data.type === "players") {
+                    players = {};
+                    for (let k in data.players) {
+                        players[data.players[k].name] = true;
+                    }
+                    updatePlayerList();
+                } else if (data.message) { // else print any message
+                    console.log(data.message);
+                    message = data.message;
+                }
+            }
+            if(message) {
+                var list = document.getElementById('chat'); // get list
+                var entry = document.createElement('div'); // create <p>
+                message = converter.makeHtml(message);
+                entry.innerHTML = linkifyHtml(message); // find and convert URLs to links
+                entry.class = "chat"; // give class chat to the <p>
+                list.appendChild(entry); // add <p> to list
+                window.scrollTo(0, document.body.scrollHeight); // auto scroll to bottom
+            }
+        }
+        function start(){ // retrieve latest 100 messages and print them
+            var request = new XMLHttpRequest();
+            request.open('GET', "https://cl.ale32bit.me");
+            request.responseType = 'text';
+            request.onload = function() {
+                document.getElementById("loading").style.display = "none";
+                document.getElementById("container").style.display = "block";
+                var data = JSON.parse(request.response);
+                console.log(data);
+                for(var k in data){
+                    var v = data[k];
+                    addLine(v,true);
+                }
+            };
+            request.send();
+        }
+
+        function HTMLCheck(){
+            enableHTMLformatting = !enableHTMLformatting; // Toggle HTML formatting (XSS)
+            if(enableHTMLformatting){
+                console.log("Oh no"); // this is just for fun
+                var btn = document.getElementById('htmlbtn');
+                btn.innerHTML = "Disable HTML";
+                return;
+            }
+            console.log("You're safe now");
+            var btn = document.getElementById('htmlbtn');
+            btn.innerHTML = "Enable HTML";
+        }
+
+        function toggleDarkTheme(h) { // Toggle dark theme // TODO: Save state in a file
+            dark = !dark;
+            if (dark){
+                setTheme("dark")
+            }else{
+                setTheme("light")
+            }
+        }
+
+        function sendMessage(){
+            //return false;
+            var message = document.getElementById("sendMsg").value;
+            console.log("token",localStorage.token);
+            if(!localStorage.token){ //bind
+                console.log(localStorage.token);
+                console.log(!localStorage.token);
+                ws.send(JSON.stringify({
+                    type:"bind",
+                    code: message,
+                }))
+            }
+
+            if(message !== ""){
+                if(!players[localStorage.player]) {
+                    ws.send(JSON.stringify({
+                        type: "send_message",
+                        token: localStorage.token,
+                        message: message,
+                    }));
+                } else {
+                    return false;
+                }
+            }
+            document.getElementById("sendMsg").value = "";
+            return false;
+        }
+
+        document.addEventListener("keydown", keyDownTextField, false);
+
+        function keyDownTextField(e) {
+            document.getElementById("sendMsg").focus()
+        }
+
+        //
+        /*setInterval(function(){
+            document.getElementById("sendMsg").disabled = true;
+            document.getElementById("submitMsg").disabled = true;
+            document.getElementById("sendMsg").placeholder = "Feature currently disabled!";
+            document.getElementById("sendMsg").value = "";
+        },1000)*/
+    </script>
+
+    <script>
+        var ws;
+        function startWS() {
+            ws = new WebSocket("wss://cl.ale32bit.me"); // Connect to WS server
+
+            ws.addEventListener("message", function (event) { // Listen to all messages from server
+                var data = JSON.parse(event.data); // Parse plain text to JSON
+                console.log(data);
+                if(data.type === "bind") {
+                    console.log("BIND_________________________________");
+                    if (data.status) {
+                        localStorage.token = data.token;
+                        localStorage.player = data.player;
+                        addLine({
+                            message: "Connected as " + data.player,
+                        });
+                        document.getElementById("sendMsg").placeholder = "Send a message as " + data.player;
+                        document.getElementById("sendMsg").maxLength = 256;
+                        document.getElementById("sendMsg").value = "";
+                        document.getElementById("submitMsg").disabled = false;
+                    } else {
+                        console.log(data);
+                    }
+                }else if (data.type==="token_info"){
+                    console.log("TOKEN_________________________________");
+                    if(data.status){
+                        window.localStorage.player = data.player;
+                        addLine({
+                            message: "Connected as " + data.player,
+                        });
+                        document.getElementById("sendMsg").placeholder = "Send a message as " + data.player;
+                        document.getElementById("sendMsg").maxLength = 256;
+                        document.getElementById("sendMsg").value = "";
+                        document.getElementById("submitMsg").disabled = false;
+                    }else{
+                        localStorage.token = "";
+                        console.log(data)
+                    }
+                }else {
+                    addLine(data); // Process data
+                }
+            });
+
+            ws.addEventListener("open", function () { // When ready
+                ws.send(JSON.stringify({type: "subscribe", event: "chat_message"})); // Subscribe to chat messages
+                ws.send(JSON.stringify({type: "subscribe", event: "user_message"})); // Subscribe to user messages
+                ws.send(JSON.stringify({type: "subscribe", event: "death_message"})); // Subscribe to death messages
+                ws.send(JSON.stringify({type: "subscribe", event: "connection_activity"})); // Subscribe to connection activity
+                ws.send(JSON.stringify({type: "subscribe", event: "console_message"})); // Subscribe to console messages
+                ws.send(JSON.stringify({type: "subscribe", event: "chatbox_message"})); // Subscribe to chatboxes messages
+                addLine({message: "<b>Connected</b>"}); // Add "Connected" line
+
+                ws.send(JSON.stringify({
+                    type:"players",
+                }));
+
+                ws.send(JSON.stringify({
+                    type: "token_info",
+                    token: localStorage.token,
+                }));
+
+                setInterval(function(){
+                    ws.send(JSON.stringify({
+                        type:"players",
+                    }))
+                },30000);
+                start();
+            });
+
+            ws.addEventListener("close", function (event) { // If WS closes
+                console.log("Closed");
+                console.log(event);
+                console.log(event.reason);
+                var reason;
+                if (event.code === 1000)
+                    reason = "Connection closed";
+                else if(event.code === 1001)
+                    reason = "Going away.";
+                else if(event.code === 1002)
+                    reason = "Protocol error.";
+                else if(event.code === 1003)
+                    reason = "Unsupported data.";
+                else if(event.code === 1004)
+                    reason = "This shouldn't happen";
+                else if(event.code === 1005)
+                    reason = "No status Rcvd.";
+                else if(event.code === 1006)
+                    reason = "Connection lost.";
+                else if(event.code === 1007)
+                    reason = "Invalid frame payload data.";
+                else if(event.code === 1008)
+                    reason = "Policy violation.";
+                else if(event.code === 1009)
+                    reason = "Message too big.";
+                else if(event.code === 1010)
+                    reason = "Mandatory ext: " + event.reason;
+                else if(event.code === 1011)
+                    reason = "Internal server error.";
+                else if(event.code === 1015)
+                    reason = "TLS handshake failed (Is certificate valid?).";
+                else
+                    reason = "Unknown reason.";
+                addLine({message: "Connection closed: <i>"+reason+"</i><br><b>Attempt to reconnect...</b>"});
+                setTimeout(startWS,3000) // Restart WS after 3 seconds
+            });
+            ws.addEventListener("error", function (err) { // If WS errors
+                console.log(err);
+                addLine({
+                    message: "Error",
+                });
+            });
+        }
+        startWS(); // Start WS for the first time
+    </script>
+    <script>if (window.module) module = window.module;</script>
+</head>
+<body>
+    <div style="width: 100%">
+        <div id="escape" style="display: none;"></div>
+
+        <div class="displaychat">
+            <div style="display: block; text-align: center; margin-top: 100px; margin-left: 45%;" id="loading">
+                <div class="la-cube-transition la-3x"><div></div><div></div></div>
+            </div>
+            <div id="container" style="display: none;">
+                <div class="chat" id="chat">
+                    <div><b>Welcome to SwitchCraft chat viewer!</b> <i>Developed by Ale32bit!</i></div>
+                </div>
+                <div class="textinput" id="textinput">
+                    <form onsubmit="return sendMessage()">
+                        <input id="sendMsg" type="text" maxlength="6" placeholder="Bind Code Here! Type \cl bind in server chat to get one!" autocomplete="off" autofocus>
+                        <input type="submit" value="Send" id="submitMsg">
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="sidenav">
+            <p class="title">Players:</p>
+            <div id="players" class="players">
+                <p style="color:#888">Loading</p>
+            </div>
+            <div style="bottom:0; position: fixed; padding-bottom: 5px; padding-left:5px; padding-right:5px; text-align: center;">
+                <!--<button class="button" onclick="toggleDarkTheme();">Switch Theme</button>-->
+                <p><button class="button" id="htmlbtn" onclick="HTMLCheck();" title="Warning: Enabling HTML formatting may lead to regrets.">Enable HTML</button></p> <!-- TODO: Should find a way to show better the warning. a tooltip? -->
+                <p><a class="button" href="https://github.com/Ale32bit/SCChat" target="_blank">Source Code</a></p>
+                <p><a class="button" href="https://github.com/Ale32bit/SCChat/issues" target="_blank">Report bug</a></p>
+                <p>&copy; 2018 Ale32bit</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
